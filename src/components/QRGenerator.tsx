@@ -543,7 +543,7 @@ END:VCARD`;
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="logo" className="border-none">
+            <AccordionItem value="logo" className="border-b-2 border-foreground">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
                 <div className="flex items-center gap-2">
                   <Image className="w-5 h-5" />
