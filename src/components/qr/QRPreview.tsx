@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import QRCodeStyling, { type Options } from "qr-code-styling";
 import type { FrameType } from "./FrameSelector";
 import type { DotStyle, CornerStyle } from "./DotStyleSelector";
+import type { ErrorCorrectionLevel } from "./ExportOptions";
 
 interface QRPreviewProps {
   value: string;
@@ -16,6 +17,8 @@ interface QRPreviewProps {
   frameColor: string;
   frameText: string;
   qrRef: React.RefObject<HTMLDivElement>;
+  errorLevel: ErrorCorrectionLevel;
+  transparentBg: boolean;
 }
 
 export function QRPreview({
@@ -31,6 +34,8 @@ export function QRPreview({
   frameColor,
   frameText,
   qrRef,
+  errorLevel,
+  transparentBg,
 }: QRPreviewProps) {
   const qrCodeRef = useRef<QRCodeStyling | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,12 +45,15 @@ export function QRPreview({
       width: size,
       height: size,
       data: value,
+      qrOptions: {
+        errorCorrectionLevel: errorLevel,
+      },
       dotsOptions: {
         color: fgColor,
         type: dotStyle,
       },
       backgroundOptions: {
-        color: bgColor,
+        color: transparentBg ? "transparent" : bgColor,
       },
       cornersSquareOptions: {
         color: fgColor,
@@ -75,7 +83,7 @@ export function QRPreview({
     } else {
       qrCodeRef.current.update(options);
     }
-  }, [value, size, fgColor, bgColor, dotStyle, cornerStyle, logo, logoSize]);
+  }, [value, size, fgColor, bgColor, dotStyle, cornerStyle, logo, logoSize, errorLevel, transparentBg]);
 
   const getFrameClasses = () => {
     const base = "relative";
@@ -105,7 +113,7 @@ export function QRPreview({
     <div
       ref={qrRef}
       className="flex flex-col items-center justify-center"
-      style={{ backgroundColor: bgColor }}
+      style={{ backgroundColor: transparentBg ? "transparent" : bgColor }}
     >
       {/* Top banner text */}
       {frameType === "scanme" && (

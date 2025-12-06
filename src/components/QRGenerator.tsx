@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image } from "lucide-react";
+import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { FrameSelector, type FrameType } from "./qr/FrameSelector";
 import { DotStyleSelector, type DotStyle, type CornerStyle } from "./qr/DotStyleSelector";
 import { LogoUploader } from "./qr/LogoUploader";
 import { QRPreview } from "./qr/QRPreview";
+import { ExportOptions, type ErrorCorrectionLevel, type Resolution } from "./qr/ExportOptions";
 
 type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard";
 
@@ -56,6 +57,11 @@ const QRGenerator = () => {
   const [logo, setLogo] = useState<string | null>(null);
   const [logoSize, setLogoSize] = useState([25]);
   
+  // Export settings
+  const [errorLevel, setErrorLevel] = useState<ErrorCorrectionLevel>("H");
+  const [transparentBg, setTransparentBg] = useState(false);
+  const [resolution, setResolution] = useState<Resolution>(2);
+  
   const [copied, setCopied] = useState(false);
   
   const qrRef = useRef<HTMLDivElement>(null);
@@ -86,17 +92,20 @@ END:VCARD`;
     }
   }, [qrType, url, text, email, phone, wifi, vcard]);
 
-  const downloadQR = async () => {
-    const qrCode = new QRCodeStyling({
-      width: size[0] * 2,
-      height: size[0] * 2,
+  const createQRCodeInstance = (multiplier: number) => {
+    return new QRCodeStyling({
+      width: size[0] * multiplier,
+      height: size[0] * multiplier,
       data: generateQRValue(),
+      qrOptions: {
+        errorCorrectionLevel: errorLevel,
+      },
       dotsOptions: {
         color: fgColor,
         type: dotStyle,
       },
       backgroundOptions: {
-        color: bgColor,
+        color: transparentBg ? "transparent" : bgColor,
       },
       cornersSquareOptions: {
         color: fgColor,
@@ -113,42 +122,66 @@ END:VCARD`;
       },
       image: logo || undefined,
     });
+  };
 
-    // Create canvas with frame
+  const downloadQR = async (format: "png" | "svg" = "png") => {
+    const qrCode = createQRCodeInstance(resolution);
+
+    if (format === "svg") {
+      // Direct SVG download
+      const svgData = await qrCode.getRawData("svg");
+      if (svgData && svgData instanceof Blob) {
+        const url = URL.createObjectURL(svgData);
+        const link = document.createElement("a");
+        link.download = `qr-code-${qrType}.svg`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast({
+          title: "Downloaded!",
+          description: "Your QR code SVG has been saved.",
+        });
+      }
+      return;
+    }
+
+    // PNG download with frame
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const qrSize = size[0] * 2;
-    const padding = frameType !== "none" ? 32 : 0;
-    const bannerHeight = (frameType === "banner" || frameType === "scanme") ? 48 : 0;
+    const qrSize = size[0] * resolution;
+    const padding = frameType !== "none" ? 32 * resolution : 0;
+    const bannerHeight = (frameType === "banner" || frameType === "scanme") ? 48 * resolution : 0;
     const totalWidth = qrSize + padding * 2;
     const totalHeight = qrSize + padding * 2 + bannerHeight;
 
     canvas.width = totalWidth;
     canvas.height = totalHeight;
 
-    // Draw background
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, totalWidth, totalHeight);
+    // Draw background (or leave transparent)
+    if (!transparentBg) {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, totalWidth, totalHeight);
+    }
 
     // Draw frame
     if (frameType !== "none") {
       ctx.strokeStyle = frameColor;
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 8 * resolution;
       
       if (frameType === "rounded") {
-        roundRect(ctx, 4, 4, totalWidth - 8, totalHeight - bannerHeight - 8, 24);
+        roundRect(ctx, 4 * resolution, 4 * resolution, totalWidth - 8 * resolution, totalHeight - bannerHeight - 8 * resolution, 24 * resolution);
         ctx.stroke();
       } else if (frameType === "circle") {
         ctx.beginPath();
         const centerX = totalWidth / 2;
         const centerY = (totalHeight - bannerHeight) / 2;
-        const radius = Math.min(centerX, centerY) - 4;
+        const radius = Math.min(centerX, centerY) - 4 * resolution;
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.stroke();
       } else {
-        ctx.strokeRect(4, 4, totalWidth - 8, totalHeight - bannerHeight - 8);
+        ctx.strokeRect(4 * resolution, 4 * resolution, totalWidth - 8 * resolution, totalHeight - bannerHeight - 8 * resolution);
       }
     }
 
@@ -156,16 +189,16 @@ END:VCARD`;
     if (frameType === "scanme") {
       ctx.fillStyle = frameColor;
       ctx.fillRect(0, 0, totalWidth, bannerHeight);
-      ctx.fillStyle = bgColor;
-      ctx.font = "bold 24px sans-serif";
+      ctx.fillStyle = transparentBg ? "#ffffff" : bgColor;
+      ctx.font = `bold ${24 * resolution}px sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(frameText || "SCAN ME", totalWidth / 2, bannerHeight / 2);
     } else if (frameType === "banner") {
       ctx.fillStyle = frameColor;
       ctx.fillRect(0, totalHeight - bannerHeight, totalWidth, bannerHeight);
-      ctx.fillStyle = bgColor;
-      ctx.font = "bold 24px sans-serif";
+      ctx.fillStyle = transparentBg ? "#ffffff" : bgColor;
+      ctx.font = `bold ${24 * resolution}px sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(frameText || "SCAN ME", totalWidth / 2, totalHeight - bannerHeight / 2);
@@ -187,7 +220,7 @@ END:VCARD`;
         
         toast({
           title: "Downloaded!",
-          description: "Your QR code has been saved.",
+          description: `Your QR code has been saved at ${resolution}x resolution.`,
         });
       };
       img.src = URL.createObjectURL(blob);
@@ -526,6 +559,25 @@ END:VCARD`;
                 />
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="export" className="border-none">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="w-5 h-5" />
+                  <span className="font-bold uppercase">Export Options</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <ExportOptions
+                  errorLevel={errorLevel}
+                  setErrorLevel={setErrorLevel}
+                  transparentBg={transparentBg}
+                  setTransparentBg={setTransparentBg}
+                  resolution={resolution}
+                  setResolution={setResolution}
+                />
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </div>
       </div>
@@ -549,16 +601,26 @@ END:VCARD`;
               frameColor={frameColor}
               frameText={frameText}
               qrRef={qrRef}
+              errorLevel={errorLevel}
+              transparentBg={transparentBg}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-3 gap-3 mt-6">
             <Button
-              onClick={downloadQR}
+              onClick={() => downloadQR("png")}
               className="border-2 border-foreground font-bold uppercase py-6 shadow-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
             >
               <Download className="w-5 h-5 mr-2" />
-              Download PNG
+              PNG
+            </Button>
+            <Button
+              onClick={() => downloadQR("svg")}
+              variant="outline"
+              className="border-2 border-foreground font-bold uppercase py-6 shadow-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
+            >
+              <Download className="w-5 h-5 mr-2" />
+              SVG
             </Button>
             <Button
               variant="outline"
@@ -573,7 +635,7 @@ END:VCARD`;
               ) : (
                 <>
                   <Copy className="w-5 h-5 mr-2" />
-                  Copy Data
+                  Copy
                 </>
               )}
             </Button>
