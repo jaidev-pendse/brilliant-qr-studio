@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2 } from "lucide-react";
+import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { FrameSelector, type FrameType } from "./qr/FrameSelector";
 import { DotStyleSelector, type DotStyle, type CornerStyle } from "./qr/DotStyleSelector";
@@ -14,7 +14,7 @@ import { LogoUploader } from "./qr/LogoUploader";
 import { QRPreview } from "./qr/QRPreview";
 import { ExportOptions, type ErrorCorrectionLevel, type Resolution } from "./qr/ExportOptions";
 
-type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard";
+type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard" | "sms" | "location" | "calendar" | "social";
 
 interface WifiData {
   ssid: string;
@@ -30,6 +30,32 @@ interface VCardData {
   organization: string;
 }
 
+interface SmsData {
+  phone: string;
+  message: string;
+}
+
+interface LocationData {
+  latitude: string;
+  longitude: string;
+  label: string;
+}
+
+interface CalendarData {
+  title: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  description: string;
+  location: string;
+}
+
+interface SocialData {
+  platform: "instagram" | "twitter" | "linkedin" | "tiktok" | "facebook" | "youtube";
+  username: string;
+}
+
 const QRGenerator = () => {
   const [qrType, setQrType] = useState<QRType>("url");
   const [url, setUrl] = useState("https://lovable.dev");
@@ -38,6 +64,18 @@ const QRGenerator = () => {
   const [phone, setPhone] = useState("");
   const [wifi, setWifi] = useState<WifiData>({ ssid: "", password: "", encryption: "WPA" });
   const [vcard, setVcard] = useState<VCardData>({ firstName: "", lastName: "", phone: "", email: "", organization: "" });
+  const [sms, setSms] = useState<SmsData>({ phone: "", message: "" });
+  const [location, setLocation] = useState<LocationData>({ latitude: "", longitude: "", label: "" });
+  const [calendar, setCalendar] = useState<CalendarData>({ 
+    title: "", 
+    startDate: "", 
+    startTime: "", 
+    endDate: "", 
+    endTime: "", 
+    description: "", 
+    location: "" 
+  });
+  const [social, setSocial] = useState<SocialData>({ platform: "instagram", username: "" });
   
   // Basic styling
   const [fgColor, setFgColor] = useState("#000000");
@@ -87,6 +125,43 @@ TEL:${vcard.phone}
 EMAIL:${vcard.email}
 ORG:${vcard.organization}
 END:VCARD`;
+      case "sms":
+        return `sms:${sms.phone}${sms.message ? `?body=${encodeURIComponent(sms.message)}` : ""}`;
+      case "location":
+        if (location.latitude && location.longitude) {
+          return `geo:${location.latitude},${location.longitude}${location.label ? `?q=${encodeURIComponent(location.label)}` : ""}`;
+        }
+        return `geo:0,0?q=${encodeURIComponent(location.label || "Location")}`;
+      case "calendar": {
+        const formatDateTime = (date: string, time: string) => {
+          if (!date) return "";
+          const d = new Date(`${date}T${time || "00:00"}`);
+          return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+        };
+        const dtStart = formatDateTime(calendar.startDate, calendar.startTime);
+        const dtEnd = formatDateTime(calendar.endDate || calendar.startDate, calendar.endTime || calendar.startTime);
+        return `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:${calendar.title}
+DTSTART:${dtStart}
+DTEND:${dtEnd}
+DESCRIPTION:${calendar.description}
+LOCATION:${calendar.location}
+END:VEVENT
+END:VCALENDAR`;
+      }
+      case "social": {
+        const socialUrls: Record<SocialData["platform"], string> = {
+          instagram: `https://instagram.com/${social.username}`,
+          twitter: `https://twitter.com/${social.username}`,
+          linkedin: `https://linkedin.com/in/${social.username}`,
+          tiktok: `https://tiktok.com/@${social.username}`,
+          facebook: `https://facebook.com/${social.username}`,
+          youtube: `https://youtube.com/@${social.username}`,
+        };
+        return socialUrls[social.platform];
+      }
       default:
         return "https://lovable.dev";
     }
@@ -245,14 +320,27 @@ END:VCARD`;
     }
   };
 
-  const qrTypeIcons = {
+  const qrTypeIcons: Record<QRType, typeof Link> = {
     url: Link,
     text: FileText,
     email: Mail,
     phone: Phone,
     wifi: Wifi,
     vcard: User,
+    sms: MessageSquare,
+    location: MapPin,
+    calendar: Calendar,
+    social: Share2,
   };
+
+  const socialPlatforms: { value: SocialData["platform"]; label: string }[] = [
+    { value: "instagram", label: "Instagram" },
+    { value: "twitter", label: "Twitter/X" },
+    { value: "linkedin", label: "LinkedIn" },
+    { value: "tiktok", label: "TikTok" },
+    { value: "facebook", label: "Facebook" },
+    { value: "youtube", label: "YouTube" },
+  ];
 
   return (
     <div className="grid lg:grid-cols-2 gap-8">
@@ -261,7 +349,7 @@ END:VCARD`;
         <div className="border-4 border-foreground bg-card p-6 shadow-md">
           <h2 className="text-xl font-bold mb-4 uppercase tracking-wide">Select Type</h2>
           <Tabs value={qrType} onValueChange={(v) => setQrType(v as QRType)} className="w-full">
-            <TabsList className="grid grid-cols-3 gap-2 h-auto bg-transparent p-0">
+            <TabsList className="grid grid-cols-5 gap-2 h-auto bg-transparent p-0">
               {(Object.keys(qrTypeIcons) as QRType[]).map((type) => {
                 const Icon = qrTypeIcons[type];
                 return (
@@ -432,6 +520,158 @@ END:VCARD`;
                     placeholder="Company Name"
                     value={vcard.organization}
                     onChange={(e) => setVcard({ ...vcard, organization: e.target.value })}
+                    className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="sms" className="mt-0 space-y-4">
+                <div>
+                  <Label className="text-sm font-bold uppercase">Phone Number</Label>
+                  <Input
+                    type="tel"
+                    placeholder="+1 234 567 8900"
+                    value={sms.phone}
+                    onChange={(e) => setSms({ ...sms, phone: e.target.value })}
+                    className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-bold uppercase">Message (Optional)</Label>
+                  <Input
+                    placeholder="Pre-filled message..."
+                    value={sms.message}
+                    onChange={(e) => setSms({ ...sms, message: e.target.value })}
+                    className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="location" className="mt-0 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-bold uppercase">Latitude</Label>
+                    <Input
+                      placeholder="40.7128"
+                      value={location.latitude}
+                      onChange={(e) => setLocation({ ...location, latitude: e.target.value })}
+                      className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-bold uppercase">Longitude</Label>
+                    <Input
+                      placeholder="-74.0060"
+                      value={location.longitude}
+                      onChange={(e) => setLocation({ ...location, longitude: e.target.value })}
+                      className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-bold uppercase">Location Label</Label>
+                  <Input
+                    placeholder="New York City"
+                    value={location.label}
+                    onChange={(e) => setLocation({ ...location, label: e.target.value })}
+                    className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="calendar" className="mt-0 space-y-4">
+                <div>
+                  <Label className="text-sm font-bold uppercase">Event Title</Label>
+                  <Input
+                    placeholder="Meeting"
+                    value={calendar.title}
+                    onChange={(e) => setCalendar({ ...calendar, title: e.target.value })}
+                    className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-bold uppercase">Start Date</Label>
+                    <Input
+                      type="date"
+                      value={calendar.startDate}
+                      onChange={(e) => setCalendar({ ...calendar, startDate: e.target.value })}
+                      className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-bold uppercase">Start Time</Label>
+                    <Input
+                      type="time"
+                      value={calendar.startTime}
+                      onChange={(e) => setCalendar({ ...calendar, startTime: e.target.value })}
+                      className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-bold uppercase">End Date</Label>
+                    <Input
+                      type="date"
+                      value={calendar.endDate}
+                      onChange={(e) => setCalendar({ ...calendar, endDate: e.target.value })}
+                      className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-bold uppercase">End Time</Label>
+                    <Input
+                      type="time"
+                      value={calendar.endTime}
+                      onChange={(e) => setCalendar({ ...calendar, endTime: e.target.value })}
+                      className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-bold uppercase">Location</Label>
+                  <Input
+                    placeholder="123 Main St"
+                    value={calendar.location}
+                    onChange={(e) => setCalendar({ ...calendar, location: e.target.value })}
+                    className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-bold uppercase">Description</Label>
+                  <Input
+                    placeholder="Event description..."
+                    value={calendar.description}
+                    onChange={(e) => setCalendar({ ...calendar, description: e.target.value })}
+                    className="mt-2 border-2 border-foreground bg-background focus:ring-0"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="social" className="mt-0 space-y-4">
+                <div>
+                  <Label className="text-sm font-bold uppercase">Platform</Label>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {socialPlatforms.map((platform) => (
+                      <Button
+                        key={platform.value}
+                        variant={social.platform === platform.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSocial({ ...social, platform: platform.value })}
+                        className="border-2 border-foreground font-bold text-xs"
+                      >
+                        {platform.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-bold uppercase">Username</Label>
+                  <Input
+                    placeholder="yourhandle"
+                    value={social.username}
+                    onChange={(e) => setSocial({ ...social, username: e.target.value })}
                     className="mt-2 border-2 border-foreground bg-background focus:ring-0"
                   />
                 </div>
