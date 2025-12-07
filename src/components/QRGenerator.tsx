@@ -6,13 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2 } from "lucide-react";
+import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { FrameSelector, type FrameType } from "./qr/FrameSelector";
 import { DotStyleSelector, type DotStyle, type CornerStyle } from "./qr/DotStyleSelector";
 import { LogoUploader } from "./qr/LogoUploader";
 import { QRPreview } from "./qr/QRPreview";
 import { ExportOptions, type ErrorCorrectionLevel, type Resolution } from "./qr/ExportOptions";
+import { QRHistory } from "./qr/QRHistory";
+import { QRTemplates, type QRTemplate } from "./qr/QRTemplates";
+import { useQRHistory, type QRHistoryItem } from "@/hooks/useQRHistory";
 
 type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard" | "sms" | "location" | "calendar" | "social";
 
@@ -103,6 +106,9 @@ const QRGenerator = () => {
   const [copied, setCopied] = useState(false);
   
   const qrRef = useRef<HTMLDivElement>(null);
+  
+  // History hook
+  const { history, addToHistory, toggleFavorite, removeFromHistory, clearHistory } = useQRHistory();
 
   const generateQRValue = useCallback((): string => {
     switch (qrType) {
@@ -199,8 +205,56 @@ END:VCALENDAR`;
     });
   };
 
+  const saveToHistory = useCallback(() => {
+    addToHistory({
+      qrType,
+      value: generateQRValue(),
+      preview: "",
+      config: {
+        fgColor,
+        bgColor,
+        dotStyle,
+        cornerStyle,
+        frameType,
+        frameText,
+        frameColor,
+      },
+    });
+  }, [addToHistory, qrType, generateQRValue, fgColor, bgColor, dotStyle, cornerStyle, frameType, frameText, frameColor]);
+
+  const loadFromHistory = useCallback((item: QRHistoryItem) => {
+    setQrType(item.qrType as QRType);
+    setFgColor(item.config.fgColor);
+    setBgColor(item.config.bgColor);
+    setDotStyle(item.config.dotStyle as DotStyle);
+    setCornerStyle(item.config.cornerStyle as CornerStyle);
+    setFrameType(item.config.frameType as FrameType);
+    setFrameText(item.config.frameText);
+    setFrameColor(item.config.frameColor);
+    toast({
+      title: "Loaded!",
+      description: "QR configuration restored from history.",
+    });
+  }, []);
+
+  const applyTemplate = useCallback((template: QRTemplate) => {
+    setFgColor(template.config.fgColor);
+    setBgColor(template.config.bgColor);
+    setDotStyle(template.config.dotStyle);
+    setCornerStyle(template.config.cornerStyle);
+    setFrameType(template.config.frameType);
+    setFrameColor(template.config.frameColor);
+    toast({
+      title: "Template Applied!",
+      description: `${template.name} style applied to your QR code.`,
+    });
+  }, []);
+
   const downloadQR = async (format: "png" | "svg" = "png") => {
     const qrCode = createQRCodeInstance(resolution);
+
+    // Save to history on download
+    saveToHistory();
 
     if (format === "svg") {
       // Direct SVG download
@@ -800,6 +854,18 @@ END:VCALENDAR`;
               </AccordionContent>
             </AccordionItem>
 
+            <AccordionItem value="templates" className="border-b-2 border-foreground">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <LayoutTemplate className="w-5 h-5" />
+                  <span className="font-bold uppercase">Templates</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <QRTemplates onApply={applyTemplate} />
+              </AccordionContent>
+            </AccordionItem>
+
             <AccordionItem value="export" className="border-none">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
                 <div className="flex items-center gap-2">
@@ -825,7 +891,16 @@ END:VCALENDAR`;
       {/* Preview Section */}
       <div className="space-y-6">
         <div className="border-4 border-foreground bg-card p-6 shadow-md">
-          <h2 className="text-xl font-bold mb-4 uppercase tracking-wide">Preview</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold uppercase tracking-wide">Preview</h2>
+            <QRHistory
+              history={history}
+              onLoad={loadFromHistory}
+              onToggleFavorite={toggleFavorite}
+              onRemove={removeFromHistory}
+              onClear={clearHistory}
+            />
+          </div>
           
           <div className="flex items-center justify-center p-8 border-2 border-foreground bg-muted/30">
             <QRPreview
