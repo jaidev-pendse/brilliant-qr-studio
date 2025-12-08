@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate } from "lucide-react";
+import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate, Wand2, Layers, Film } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { FrameSelector, type FrameType } from "./qr/FrameSelector";
 import { DotStyleSelector, type DotStyle, type CornerStyle } from "./qr/DotStyleSelector";
@@ -16,6 +16,12 @@ import { ExportOptions, type ErrorCorrectionLevel, type Resolution } from "./qr/
 import { QRHistory } from "./qr/QRHistory";
 import { QRTemplates, type QRTemplate } from "./qr/QRTemplates";
 import { useQRHistory, type QRHistoryItem } from "@/hooks/useQRHistory";
+import { GradientPicker, type GradientConfig } from "./qr/GradientPicker";
+import { BackgroundImageUploader, type BackgroundConfig } from "./qr/BackgroundImageUploader";
+import { CornerBadge, type CornerBadgeConfig } from "./qr/CornerBadge";
+import { ShapeMask, type ShapeType } from "./qr/ShapeMask";
+import { AnimationOptions, type AnimationConfig, getAnimationDuration } from "./qr/AnimationOptions";
+import { generateSpriteSheet } from "@/lib/gifEncoder";
 
 type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard" | "sms" | "location" | "calendar" | "social";
 
@@ -103,6 +109,33 @@ const QRGenerator = () => {
   const [transparentBg, setTransparentBg] = useState(false);
   const [resolution, setResolution] = useState<Resolution>(2);
   
+  // Advanced styling - Phase A
+  const [gradient, setGradient] = useState<GradientConfig>({
+    enabled: false,
+    type: "linear",
+    color1: "#000000",
+    color2: "#333333",
+    rotation: 45,
+  });
+  const [background, setBackground] = useState<BackgroundConfig>({
+    enabled: false,
+    image: null,
+    opacity: 50,
+    blur: 0,
+  });
+  const [cornerBadge, setCornerBadge] = useState<CornerBadgeConfig>({
+    enabled: false,
+    image: null,
+    position: "bottom-right",
+    size: 10,
+  });
+  const [shapeMask, setShapeMask] = useState<ShapeType>("square");
+  const [animation, setAnimation] = useState<AnimationConfig>({
+    enabled: false,
+    type: "none",
+    speed: "medium",
+  });
+  
   const [copied, setCopied] = useState(false);
   
   const qrRef = useRef<HTMLDivElement>(null);
@@ -174,6 +207,40 @@ END:VCALENDAR`;
   }, [qrType, url, text, email, phone, wifi, vcard]);
 
   const createQRCodeInstance = (multiplier: number) => {
+    const dotsOptions = gradient.enabled
+      ? {
+          gradient: {
+            type: gradient.type as "linear" | "radial",
+            rotation: gradient.rotation * (Math.PI / 180),
+            colorStops: [
+              { offset: 0, color: gradient.color1 },
+              { offset: 1, color: gradient.color2 },
+            ],
+          },
+          type: dotStyle,
+        }
+      : {
+          color: fgColor,
+          type: dotStyle,
+        };
+
+    const cornersOptions = gradient.enabled
+      ? {
+          gradient: {
+            type: gradient.type as "linear" | "radial",
+            rotation: gradient.rotation * (Math.PI / 180),
+            colorStops: [
+              { offset: 0, color: gradient.color1 },
+              { offset: 1, color: gradient.color2 },
+            ],
+          },
+          type: cornerStyle,
+        }
+      : {
+          color: fgColor,
+          type: cornerStyle,
+        };
+
     return new QRCodeStyling({
       width: size[0] * multiplier,
       height: size[0] * multiplier,
@@ -181,21 +248,27 @@ END:VCALENDAR`;
       qrOptions: {
         errorCorrectionLevel: errorLevel,
       },
-      dotsOptions: {
-        color: fgColor,
-        type: dotStyle,
-      },
+      dotsOptions,
       backgroundOptions: {
         color: transparentBg ? "transparent" : bgColor,
       },
-      cornersSquareOptions: {
-        color: fgColor,
-        type: cornerStyle,
-      },
-      cornersDotOptions: {
-        color: fgColor,
-        type: cornerStyle === "square" ? "square" : "dot",
-      },
+      cornersSquareOptions: cornersOptions,
+      cornersDotOptions: gradient.enabled
+        ? {
+            gradient: {
+              type: gradient.type as "linear" | "radial",
+              rotation: gradient.rotation * (Math.PI / 180),
+              colorStops: [
+                { offset: 0, color: gradient.color1 },
+                { offset: 1, color: gradient.color2 },
+              ],
+            },
+            type: cornerStyle === "square" ? "square" : "dot",
+          }
+        : {
+            color: fgColor,
+            type: cornerStyle === "square" ? "square" : "dot",
+          },
       imageOptions: {
         crossOrigin: "anonymous",
         margin: 4,
@@ -854,6 +927,48 @@ END:VCALENDAR`;
               </AccordionContent>
             </AccordionItem>
 
+            <AccordionItem value="advanced-styling" className="border-b-2 border-foreground">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="w-5 h-5" />
+                  <span className="font-bold uppercase">Advanced Styling</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6 space-y-6">
+                <GradientPicker gradient={gradient} setGradient={setGradient} />
+                <div className="border-t-2 border-foreground pt-4">
+                  <ShapeMask shape={shapeMask} setShape={setShapeMask} />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="background" className="border-b-2 border-foreground">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-5 h-5" />
+                  <span className="font-bold uppercase">Background & Badges</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6 space-y-6">
+                <BackgroundImageUploader background={background} setBackground={setBackground} />
+                <div className="border-t-2 border-foreground pt-4">
+                  <CornerBadge badge={cornerBadge} setBadge={setCornerBadge} />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="animation" className="border-b-2 border-foreground">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Film className="w-5 h-5" />
+                  <span className="font-bold uppercase">Animation</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <AnimationOptions animation={animation} setAnimation={setAnimation} />
+              </AccordionContent>
+            </AccordionItem>
+
             <AccordionItem value="templates" className="border-b-2 border-foreground">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
                 <div className="flex items-center gap-2">
@@ -918,6 +1033,11 @@ END:VCALENDAR`;
               qrRef={qrRef}
               errorLevel={errorLevel}
               transparentBg={transparentBg}
+              gradient={gradient}
+              background={background}
+              cornerBadge={cornerBadge}
+              shapeMask={shapeMask}
+              animation={animation}
             />
           </div>
 
@@ -955,6 +1075,11 @@ END:VCALENDAR`;
               )}
             </Button>
           </div>
+          {animation.enabled && (
+            <div className="mt-3 text-xs text-muted-foreground border-2 border-foreground p-3 bg-secondary">
+              <strong>Animation Preview:</strong> The animation is visible in the preview. Export as PNG/SVG for static versions.
+            </div>
+          )}
         </div>
 
         {/* Info Card */}
