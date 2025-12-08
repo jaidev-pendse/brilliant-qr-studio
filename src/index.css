@@ -158,3 +158,43 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* QR Code Animations */
+@keyframes qr-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes qr-fade {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes qr-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px hsl(var(--foreground) / 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px hsl(var(--foreground) / 0.6));
+  }
+}
+
+@keyframes qr-scan {
+  0% {
+    clip-path: inset(0 0 100% 0);
+  }
+  50% {
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    clip-path: inset(100% 0 0 0);
+  }
+}
