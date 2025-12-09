@@ -22,6 +22,8 @@ import { CornerBadge, type CornerBadgeConfig } from "./qr/CornerBadge";
 import { ShapeMask, type ShapeType } from "./qr/ShapeMask";
 import { AnimationOptions, type AnimationConfig, getAnimationDuration } from "./qr/AnimationOptions";
 import { generateSpriteSheet } from "@/lib/gifEncoder";
+import { ShareOptions } from "./qr/ShareOptions";
+import { PrintPreview } from "./qr/PrintPreview";
 
 type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard" | "sms" | "location" | "calendar" | "social";
 
@@ -1074,6 +1076,10 @@ END:VCALENDAR`;
                 </>
               )}
             </Button>
+          </div>
+          <div className="flex gap-3 mt-3">
+            <ShareOptions qrRef={qrRef} qrData={generateQRValue()} />
+            <PrintPreview qrRef={qrRef} qrData={generateQRValue()} />
           </div>
           {animation.enabled && (
             <div className="mt-3 text-xs text-muted-foreground border-2 border-foreground p-3 bg-secondary">
