@@ -1077,7 +1077,7 @@ END:VCALENDAR`;
               )}
             </Button>
           </div>
-          <div className="flex gap-3 mt-3">
+          <div className="grid grid-cols-2 gap-3 mt-3">
             <ShareOptions qrRef={qrRef} qrData={generateQRValue()} />
             <PrintPreview qrRef={qrRef} qrData={generateQRValue()} />
           </div>

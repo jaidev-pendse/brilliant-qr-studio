@@ -254,8 +254,11 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ qrRef, qrData }) => 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Printer className="h-4 w-4" />
+        <Button 
+          variant="outline" 
+          className="flex-1 border-2 border-foreground font-bold uppercase py-6 shadow-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
+        >
+          <Printer className="w-5 h-5 mr-2" />
           Print
         </Button>
       </DialogTrigger>
