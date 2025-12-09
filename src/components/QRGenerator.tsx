@@ -24,6 +24,7 @@ import { AnimationOptions, type AnimationConfig, getAnimationDuration } from "./
 import { generateSpriteSheet } from "@/lib/gifEncoder";
 import { ShareOptions } from "./qr/ShareOptions";
 import { PrintPreview } from "./qr/PrintPreview";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard" | "sms" | "location" | "calendar" | "social";
 
@@ -141,6 +142,7 @@ const QRGenerator = () => {
   const [copied, setCopied] = useState(false);
   
   const qrRef = useRef<HTMLDivElement>(null);
+  const mainInputRef = useRef<HTMLInputElement>(null);
   
   // History hook
   const { history, addToHistory, toggleFavorite, removeFromHistory, clearHistory } = useQRHistory();
@@ -449,6 +451,15 @@ END:VCALENDAR`;
     }
   };
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onDownloadPNG: () => downloadQR("png"),
+    onDownloadSVG: () => downloadQR("svg"),
+    onCopyData: copyToClipboard,
+    onSetQRType: (type) => setQrType(type),
+    inputRef: mainInputRef,
+  });
+
   const qrTypeIcons: Record<QRType, typeof Link> = {
     url: Link,
     text: FileText,
@@ -499,6 +510,7 @@ END:VCALENDAR`;
                 <div>
                   <Label className="text-sm font-bold uppercase">Website URL</Label>
                   <Input
+                    ref={mainInputRef}
                     type="url"
                     placeholder="https://example.com"
                     value={url}

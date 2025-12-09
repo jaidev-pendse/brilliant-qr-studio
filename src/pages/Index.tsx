@@ -1,5 +1,6 @@
 import QRGenerator from "@/components/QRGenerator";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { KeyboardShortcutsHelp } from "@/components/qr/KeyboardShortcutsHelp";
 import { QrCode, Zap, Palette, Download, Shield, Smartphone } from "lucide-react";
 
 const Index = () => {
@@ -17,7 +18,8 @@ const Index = () => {
       {/* Hero Section */}
       <header className="border-b-4 border-foreground bg-secondary">
         <div className="container py-12 md:py-20">
-          <div className="absolute top-4 right-4 md:top-6 md:right-6">
+          <div className="absolute top-4 right-4 md:top-6 md:right-6 flex gap-2">
+            <KeyboardShortcutsHelp />
             <ThemeToggle />
           </div>
           <div className="flex flex-col items-center text-center">
