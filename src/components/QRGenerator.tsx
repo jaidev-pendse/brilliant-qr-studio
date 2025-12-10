@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate, Wand2, Layers, Film, Layers2 } from "lucide-react";
+import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate, Wand2, Layers, Film, Layers2, Accessibility } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { FrameSelector, type FrameType } from "./qr/FrameSelector";
 import { DotStyleSelector, type DotStyle, type CornerStyle } from "./qr/DotStyleSelector";
@@ -28,6 +28,9 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { BatchGenerator } from "./qr/BatchGenerator";
 import { BatchPreview } from "./qr/BatchPreview";
 import { BatchQRItem, BatchQRConfig } from "@/lib/batchExport";
+import { AccessibilityOptions } from "./qr/AccessibilityOptions";
+
+type GeneratorMode = "single" | "batch" | "accessibility";
 
 type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard" | "sms" | "location" | "calendar" | "social";
 
@@ -144,8 +147,8 @@ const QRGenerator = () => {
   
   const [copied, setCopied] = useState(false);
   
-  // Batch mode state
-  const [batchMode, setBatchMode] = useState(false);
+  // Mode state
+  const [generatorMode, setGeneratorMode] = useState<GeneratorMode>("single");
   const [batchItems, setBatchItems] = useState<BatchQRItem[]>([]);
   const [showBatchPreview, setShowBatchPreview] = useState(false);
   
@@ -513,23 +516,31 @@ END:VCALENDAR`;
         {/* Mode Toggle */}
         <div className="flex gap-2">
           <Button
-            variant={!batchMode ? "default" : "outline"}
-            onClick={() => { setBatchMode(false); setShowBatchPreview(false); }}
-            className="flex-1 border-2 border-foreground font-bold uppercase"
+            variant={generatorMode === "single" ? "default" : "outline"}
+            onClick={() => { setGeneratorMode("single"); setShowBatchPreview(false); }}
+            className="flex-1 border-2 border-foreground font-bold uppercase text-xs"
           >
             Single QR
           </Button>
           <Button
-            variant={batchMode ? "default" : "outline"}
-            onClick={() => setBatchMode(true)}
-            className="flex-1 border-2 border-foreground font-bold uppercase"
+            variant={generatorMode === "batch" ? "default" : "outline"}
+            onClick={() => setGeneratorMode("batch")}
+            className="flex-1 border-2 border-foreground font-bold uppercase text-xs"
           >
-            <Layers2 className="w-4 h-4 mr-2" />
-            Batch Mode
+            <Layers2 className="w-4 h-4 mr-1" />
+            Batch
+          </Button>
+          <Button
+            variant={generatorMode === "accessibility" ? "default" : "outline"}
+            onClick={() => setGeneratorMode("accessibility")}
+            className="flex-1 border-2 border-foreground font-bold uppercase text-xs"
+          >
+            <Accessibility className="w-4 h-4 mr-1" />
+            A11y
           </Button>
         </div>
 
-        {batchMode ? (
+        {generatorMode === "batch" ? (
           <div className="border-4 border-foreground bg-card p-6 shadow-md">
             <h2 className="text-xl font-bold mb-4 uppercase tracking-wide">Batch Generator</h2>
             {showBatchPreview ? (
@@ -542,6 +553,16 @@ END:VCALENDAR`;
             ) : (
               <BatchGenerator onItemsGenerated={handleBatchItemsGenerated} />
             )}
+          </div>
+        ) : generatorMode === "accessibility" ? (
+          <div className="border-4 border-foreground bg-card p-6 shadow-md">
+            <h2 className="text-xl font-bold mb-4 uppercase tracking-wide">Accessibility</h2>
+            <AccessibilityOptions
+              fgColor={fgColor}
+              bgColor={bgColor}
+              setFgColor={setFgColor}
+              setBgColor={setBgColor}
+            />
           </div>
         ) : (
           <>
