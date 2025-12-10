@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate, Wand2, Layers, Film } from "lucide-react";
+import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate, Wand2, Layers, Film, Layers2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { FrameSelector, type FrameType } from "./qr/FrameSelector";
 import { DotStyleSelector, type DotStyle, type CornerStyle } from "./qr/DotStyleSelector";
@@ -25,6 +25,9 @@ import { generateSpriteSheet } from "@/lib/gifEncoder";
 import { ShareOptions } from "./qr/ShareOptions";
 import { PrintPreview } from "./qr/PrintPreview";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { BatchGenerator } from "./qr/BatchGenerator";
+import { BatchPreview } from "./qr/BatchPreview";
+import { BatchQRItem, BatchQRConfig } from "@/lib/batchExport";
 
 type QRType = "url" | "text" | "email" | "phone" | "wifi" | "vcard" | "sms" | "location" | "calendar" | "social";
 
@@ -140,6 +143,11 @@ const QRGenerator = () => {
   });
   
   const [copied, setCopied] = useState(false);
+  
+  // Batch mode state
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchItems, setBatchItems] = useState<BatchQRItem[]>([]);
+  const [showBatchPreview, setShowBatchPreview] = useState(false);
   
   const qrRef = useRef<HTMLDivElement>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
@@ -460,6 +468,22 @@ END:VCALENDAR`;
     inputRef: mainInputRef,
   });
 
+  // Batch mode handlers
+  const handleBatchItemsGenerated = useCallback((items: BatchQRItem[]) => {
+    setBatchItems(items);
+    setShowBatchPreview(true);
+  }, []);
+
+  const getBatchConfig = useCallback((): BatchQRConfig => ({
+    fgColor,
+    bgColor,
+    dotStyle,
+    cornerStyle,
+    size: size[0] * resolution,
+    errorLevel,
+    gradient: gradient.enabled ? gradient : undefined,
+  }), [fgColor, bgColor, dotStyle, cornerStyle, size, resolution, errorLevel, gradient]);
+
   const qrTypeIcons: Record<QRType, typeof Link> = {
     url: Link,
     text: FileText,
@@ -486,6 +510,41 @@ END:VCALENDAR`;
     <div className="grid lg:grid-cols-2 gap-8">
       {/* Input Section */}
       <div className="space-y-6">
+        {/* Mode Toggle */}
+        <div className="flex gap-2">
+          <Button
+            variant={!batchMode ? "default" : "outline"}
+            onClick={() => { setBatchMode(false); setShowBatchPreview(false); }}
+            className="flex-1 border-2 border-foreground font-bold uppercase"
+          >
+            Single QR
+          </Button>
+          <Button
+            variant={batchMode ? "default" : "outline"}
+            onClick={() => setBatchMode(true)}
+            className="flex-1 border-2 border-foreground font-bold uppercase"
+          >
+            <Layers2 className="w-4 h-4 mr-2" />
+            Batch Mode
+          </Button>
+        </div>
+
+        {batchMode ? (
+          <div className="border-4 border-foreground bg-card p-6 shadow-md">
+            <h2 className="text-xl font-bold mb-4 uppercase tracking-wide">Batch Generator</h2>
+            {showBatchPreview ? (
+              <BatchPreview
+                items={batchItems}
+                onItemsChange={setBatchItems}
+                config={getBatchConfig()}
+                onClose={() => setShowBatchPreview(false)}
+              />
+            ) : (
+              <BatchGenerator onItemsGenerated={handleBatchItemsGenerated} />
+            )}
+          </div>
+        ) : (
+          <>
         <div className="border-4 border-foreground bg-card p-6 shadow-md">
           <h2 className="text-xl font-bold mb-4 uppercase tracking-wide">Select Type</h2>
           <Tabs value={qrType} onValueChange={(v) => setQrType(v as QRType)} className="w-full">
@@ -1015,6 +1074,8 @@ END:VCALENDAR`;
             </AccordionItem>
           </Accordion>
         </div>
+          </>
+        )}
       </div>
 
       {/* Preview Section */}
