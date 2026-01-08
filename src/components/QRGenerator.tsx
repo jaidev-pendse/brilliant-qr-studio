@@ -536,7 +536,7 @@ END:VCALENDAR`;
             className="flex-1 border-2 border-foreground font-bold uppercase text-xs"
           >
             <Accessibility className="w-4 h-4 mr-1" />
-            A11y
+            Accessibility
           </Button>
         </div>
 
