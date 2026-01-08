@@ -1,15 +1,14 @@
 // Print utilities for QR code generation
-import html2canvas from 'html2canvas';
 
 export interface CropMarkOptions {
   enabled: boolean;
-  length: number;
-  offset: number;
+  length: number; // in mm
+  offset: number; // distance from edge in mm
 }
 
 export interface BleedOptions {
   enabled: boolean;
-  size: number;
+  size: number; // in mm (typically 3mm)
 }
 
 export const PAPER_DIMENSIONS = {
@@ -19,10 +18,25 @@ export const PAPER_DIMENSIONS = {
   a6: { width: 105, height: 148 },
 } as const;
 
-export const BUSINESS_CARD_SIZE = { width: 88.9, height: 50.8 };
-export const TABLE_TENT_SIZE = { width: 101.6, height: 152.4 };
-export const BADGE_SIZE = { width: 85.6, height: 53.98 };
-export const LABEL_SIZE = { width: 63.5, height: 38.1 };
+export const BUSINESS_CARD_SIZE = {
+  width: 88.9, // 3.5 inches
+  height: 50.8, // 2 inches
+};
+
+export const TABLE_TENT_SIZE = {
+  width: 101.6, // 4 inches
+  height: 152.4, // 6 inches (folded)
+};
+
+export const BADGE_SIZE = {
+  width: 85.6, // ID-1 standard
+  height: 53.98,
+};
+
+export const LABEL_SIZE = {
+  width: 63.5, // 2.5 inches
+  height: 38.1, // 1.5 inches
+};
 
 export function getPaperDimensions(
   paperSize: keyof typeof PAPER_DIMENSIONS,
@@ -52,28 +66,38 @@ export function drawCropMarks(
   dpi: number = 96
 ): void {
   if (!options.enabled) return;
+
   const length = mmToPx(options.length, dpi);
   const offset = mmToPx(options.offset, dpi);
+
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 0.5;
+
+  // Top-left corner
   ctx.beginPath();
   ctx.moveTo(x - offset - length, y);
   ctx.lineTo(x - offset, y);
   ctx.moveTo(x, y - offset - length);
   ctx.lineTo(x, y - offset);
   ctx.stroke();
+
+  // Top-right corner
   ctx.beginPath();
   ctx.moveTo(x + width + offset, y);
   ctx.lineTo(x + width + offset + length, y);
   ctx.moveTo(x + width, y - offset - length);
   ctx.lineTo(x + width, y - offset);
   ctx.stroke();
+
+  // Bottom-left corner
   ctx.beginPath();
   ctx.moveTo(x - offset - length, y + height);
   ctx.lineTo(x - offset, y + height);
   ctx.moveTo(x, y + height + offset);
   ctx.lineTo(x, y + height + offset + length);
   ctx.stroke();
+
+  // Bottom-right corner
   ctx.beginPath();
   ctx.moveTo(x + width + offset, y + height);
   ctx.lineTo(x + width + offset + length, y + height);
@@ -82,27 +106,42 @@ export function drawCropMarks(
   ctx.stroke();
 }
 
-export async function getHighResQRDataURL(
+export function getHighResQRDataURL(
   qrRef: React.RefObject<HTMLDivElement>,
   scale: number = 3
 ): Promise<string | null> {
-  if (!qrRef.current) return null;
-  try {
-    const canvas = await html2canvas(qrRef.current, {
-      scale,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      logging: false,
-    });
-    return canvas.toDataURL('image/png', 1.0);
-  } catch (err) {
-    console.error('Failed to capture QR:', err);
-    const inner = qrRef.current.querySelector('canvas');
-    return inner ? inner.toDataURL('image/png') : null;
-  }
+  return new Promise((resolve) => {
+    if (!qrRef.current) {
+      resolve(null);
+      return;
+    }
+
+    const canvas = qrRef.current.querySelector('canvas');
+    if (!canvas) {
+      resolve(null);
+      return;
+    }
+
+    // Create a high-res version
+    const highResCanvas = document.createElement('canvas');
+    const ctx = highResCanvas.getContext('2d');
+    if (!ctx) {
+      resolve(canvas.toDataURL('image/png'));
+      return;
+    }
+
+    highResCanvas.width = canvas.width * scale;
+    highResCanvas.height = canvas.height * scale;
+    ctx.imageSmoothingEnabled = false;
+    ctx.scale(scale, scale);
+    ctx.drawImage(canvas, 0, 0);
+
+    resolve(highResCanvas.toDataURL('image/png', 1.0));
+  });
 }
 
-export function formatFileName(template: string, ext: string): string {
-  return `qr-${template}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+export function formatFileName(template: string, extension: string): string {
+  const date = new Date();
+  const timestamp = date.toISOString().slice(0, 10);
+  return `qr-${template}-${timestamp}.${extension}`;
 }
