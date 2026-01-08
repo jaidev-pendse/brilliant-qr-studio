@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate, Wand2, Layers, Film, Layers2, Accessibility } from "lucide-react";
+import { Download, Link, Mail, Phone, Wifi, User, FileText, Copy, Check, Palette, Frame, Sparkles, Image, Settings2, MessageSquare, MapPin, Calendar, Share2, LayoutTemplate, Wand2, Layers, Film, Layers2, Eye } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { FrameSelector, type FrameType } from "./qr/FrameSelector";
 import { DotStyleSelector, type DotStyle, type CornerStyle } from "./qr/DotStyleSelector";
@@ -535,7 +535,7 @@ END:VCALENDAR`;
             onClick={() => setGeneratorMode("accessibility")}
             className="flex-1 border-2 border-foreground font-bold uppercase text-xs"
           >
-            <Accessibility className="w-4 h-4 mr-1" />
+            <Eye className="w-4 h-4 mr-1" />
             Accessibility
           </Button>
         </div>
