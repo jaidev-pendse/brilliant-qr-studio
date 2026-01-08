@@ -1,4 +1,5 @@
 // Print utilities for QR code generation
+import html2canvas from 'html2canvas';
 
 export interface CropMarkOptions {
   enabled: boolean;
@@ -106,38 +107,46 @@ export function drawCropMarks(
   ctx.stroke();
 }
 
-export function getHighResQRDataURL(
+export async function getHighResQRDataURL(
   qrRef: React.RefObject<HTMLDivElement>,
   scale: number = 3
 ): Promise<string | null> {
-  return new Promise((resolve) => {
-    if (!qrRef.current) {
-      resolve(null);
-      return;
+  if (!qrRef.current) {
+    return null;
+  }
+
+  try {
+    // Use html2canvas to capture the entire styled QR code element
+    // This includes frames, backgrounds, badges, etc.
+    const canvas = await html2canvas(qrRef.current, {
+      scale: scale,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null, // Preserve transparency
+      logging: false,
+    });
+
+    return canvas.toDataURL('image/png', 1.0);
+  } catch (error) {
+    console.error('Failed to capture QR code:', error);
+    
+    // Fallback to basic canvas capture if html2canvas fails
+    const fallbackCanvas = qrRef.current.querySelector('canvas');
+    if (fallbackCanvas) {
+      const highResCanvas = document.createElement('canvas');
+      const ctx = highResCanvas.getContext('2d');
+      if (ctx) {
+        highResCanvas.width = fallbackCanvas.width * scale;
+        highResCanvas.height = fallbackCanvas.height * scale;
+        ctx.imageSmoothingEnabled = false;
+        ctx.scale(scale, scale);
+        ctx.drawImage(fallbackCanvas, 0, 0);
+        return highResCanvas.toDataURL('image/png', 1.0);
+      }
+      return fallbackCanvas.toDataURL('image/png');
     }
-
-    const canvas = qrRef.current.querySelector('canvas');
-    if (!canvas) {
-      resolve(null);
-      return;
-    }
-
-    // Create a high-res version
-    const highResCanvas = document.createElement('canvas');
-    const ctx = highResCanvas.getContext('2d');
-    if (!ctx) {
-      resolve(canvas.toDataURL('image/png'));
-      return;
-    }
-
-    highResCanvas.width = canvas.width * scale;
-    highResCanvas.height = canvas.height * scale;
-    ctx.imageSmoothingEnabled = false;
-    ctx.scale(scale, scale);
-    ctx.drawImage(canvas, 0, 0);
-
-    resolve(highResCanvas.toDataURL('image/png', 1.0));
-  });
+    return null;
+  }
 }
 
 export function formatFileName(template: string, extension: string): string {
