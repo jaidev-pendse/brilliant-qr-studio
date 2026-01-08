@@ -1,4 +1,5 @@
 // Print utilities for QR code generation
+
 import html2canvas from 'html2canvas';
 
 export interface CropMarkOptions {
